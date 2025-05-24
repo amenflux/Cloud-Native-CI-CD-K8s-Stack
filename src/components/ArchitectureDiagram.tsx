@@ -81,7 +81,7 @@ export const ArchitectureDiagram = () => {
       </div>
       
       <div className="relative">
-        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-8">
+        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-16">
           {components.map((component) => {
             const Icon = component.icon;
             return (
@@ -109,33 +109,49 @@ export const ArchitectureDiagram = () => {
             );
           })}
         </div>
-        
-        {/* Connection lines - positioned below the grid */}
-        <div className="relative h-20 mb-4">
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                      refX="9" refY="3.5" orient="auto">
-                <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa" />
-              </marker>
-            </defs>
-            
-            {/* Frontend to Backend - horizontal line */}
-            <line x1="33%" y1="30%" x2="66%" y2="30%" 
-                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-            
-            {/* Backend to MongoDB - diagonal line */}
-            <line x1="55%" y1="40%" x2="75%" y2="70%" 
-                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-            
-            {/* Backend to Redis - diagonal line */}
-            <line x1="45%" y1="40%" x2="25%" y2="70%" 
-                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-          </svg>
-        </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
+        {/* Downward arrows above each box */}
+        <div className="absolute -top-8 left-0 right-0 flex justify-center md:justify-between">
+          <div className="flex-1 flex justify-center">
+            <svg width="24" height="24" className="text-blue-400">
+              <defs>
+                <marker id="arrowhead-down-1" markerWidth="10" markerHeight="7" 
+                        refX="5" refY="6" orient="auto">
+                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
+                </marker>
+              </defs>
+              <line x1="12" y1="4" x2="12" y2="20" 
+                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-1)" />
+            </svg>
+          </div>
+          <div className="flex-1 flex justify-center">
+            <svg width="24" height="24" className="text-blue-400">
+              <defs>
+                <marker id="arrowhead-down-2" markerWidth="10" markerHeight="7" 
+                        refX="5" refY="6" orient="auto">
+                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
+                </marker>
+              </defs>
+              <line x1="12" y1="4" x2="12" y2="20" 
+                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-2)" />
+            </svg>
+          </div>
+          <div className="flex-1 flex justify-center">
+            <svg width="24" height="24" className="text-blue-400">
+              <defs>
+                <marker id="arrowhead-down-3" markerWidth="10" markerHeight="7" 
+                        refX="5" refY="6" orient="auto">
+                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
+                </marker>
+              </defs>
+              <line x1="12" y1="4" x2="12" y2="20" 
+                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-3)" />
+            </svg>
+          </div>
+        </div>
+        
         <div className="bg-slate-700/50 rounded-lg p-4">
           <h4 className="text-white font-semibold mb-2">Infrastructure</h4>
           <p className="text-sm text-slate-300">Kubernetes cluster with 3 worker nodes</p>

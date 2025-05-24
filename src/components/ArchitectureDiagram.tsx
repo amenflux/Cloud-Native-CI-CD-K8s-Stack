@@ -80,58 +80,62 @@ export const ArchitectureDiagram = () => {
         </div>
       </div>
       
-      <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 relative">
-        {components.map((component) => {
-          const Icon = component.icon;
-          return (
-            <div
-              key={component.id}
-              className={`
-                col-start-${component.position.x + 1} 
-                row-start-${component.position.y + 1}
-                ${getStatusColor(component.status)}
-                border-2 rounded-lg p-4 
-                hover:scale-105 transition-all duration-200 cursor-pointer
-                group relative
-              `}
-            >
-              <div className="flex flex-col items-center text-center">
-                <Icon className="w-8 h-8 mb-2" />
-                <h3 className="font-semibold text-sm mb-1">{component.name}</h3>
-                <span className="text-xs opacity-75">{component.type}</span>
+      <div className="relative">
+        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-8">
+          {components.map((component) => {
+            const Icon = component.icon;
+            return (
+              <div
+                key={component.id}
+                className={`
+                  col-start-${component.position.x + 1} 
+                  row-start-${component.position.y + 1}
+                  ${getStatusColor(component.status)}
+                  border-2 rounded-lg p-4 
+                  hover:scale-105 transition-all duration-200 cursor-pointer
+                  group relative
+                `}
+              >
+                <div className="flex flex-col items-center text-center">
+                  <Icon className="w-8 h-8 mb-2" />
+                  <h3 className="font-semibold text-sm mb-1">{component.name}</h3>
+                  <span className="text-xs opacity-75">{component.type}</span>
+                </div>
+                
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 
+                               rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                </div>
               </div>
-              
-              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-purple-600/20 
-                             rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
         
-        {/* Connection lines */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          <defs>
-            <marker id="arrowhead" markerWidth="10" markerHeight="7" 
-                    refX="9" refY="3.5" orient="auto">
-              <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa" />
-            </marker>
-          </defs>
-          
-          {/* Frontend to Backend */}
-          <line x1="50%" y1="25%" x2="50%" y2="50%" 
-                stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-          
-          {/* Backend to MongoDB */}
-          <line x1="60%" y1="65%" x2="75%" y2="80%" 
-                stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-          
-          {/* Backend to Redis */}
-          <line x1="40%" y1="65%" x2="25%" y2="80%" 
-                stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
-        </svg>
+        {/* Connection lines - positioned below the grid */}
+        <div className="relative h-20 mb-4">
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            <defs>
+              <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                      refX="9" refY="3.5" orient="auto">
+                <polygon points="0 0, 10 3.5, 0 7" fill="#60a5fa" />
+              </marker>
+            </defs>
+            
+            {/* Frontend to Backend - horizontal line */}
+            <line x1="33%" y1="30%" x2="66%" y2="30%" 
+                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
+            
+            {/* Backend to MongoDB - diagonal line */}
+            <line x1="55%" y1="40%" x2="75%" y2="70%" 
+                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
+            
+            {/* Backend to Redis - diagonal line */}
+            <line x1="45%" y1="40%" x2="25%" y2="70%" 
+                  stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead)" />
+          </svg>
+        </div>
       </div>
       
-      <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-slate-700/50 rounded-lg p-4">
           <h4 className="text-white font-semibold mb-2">Infrastructure</h4>
           <p className="text-sm text-slate-300">Kubernetes cluster with 3 worker nodes</p>

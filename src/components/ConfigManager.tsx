@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { 
   Folder, 
@@ -251,7 +250,7 @@ spec:
     environment {
         DOCKERHUB_CREDENTIALS = credentials('dockerhub-token')
         KUBECONFIG = credentials('kubeconfig')
-        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        IMAGE_TAG = "\${env.BUILD_NUMBER}"
     }
     
     stages {
@@ -266,8 +265,8 @@ spec:
             steps {
                 script {
                     dir('backend') {
-                        sh 'docker build -t cloudnative/flask-api:${IMAGE_TAG} .'
-                        sh 'docker tag cloudnative/flask-api:${IMAGE_TAG} cloudnative/flask-api:latest'
+                        sh 'docker build -t cloudnative/flask-api:\${IMAGE_TAG} .'
+                        sh 'docker tag cloudnative/flask-api:\${IMAGE_TAG} cloudnative/flask-api:latest'
                     }
                 }
             }
@@ -277,8 +276,8 @@ spec:
             steps {
                 script {
                     dir('frontend') {
-                        sh 'docker build -t cloudnative/react-dashboard:${IMAGE_TAG} .'
-                        sh 'docker tag cloudnative/react-dashboard:${IMAGE_TAG} cloudnative/react-dashboard:latest'
+                        sh 'docker build -t cloudnative/react-dashboard:\${IMAGE_TAG} .'
+                        sh 'docker tag cloudnative/react-dashboard:\${IMAGE_TAG} cloudnative/react-dashboard:latest'
                     }
                 }
             }
@@ -288,9 +287,9 @@ spec:
             steps {
                 script {
                     sh 'echo $DOCKERHUB_CREDENTIALS_PSW | docker login -u $DOCKERHUB_CREDENTIALS_USR --password-stdin'
-                    sh 'docker push cloudnative/flask-api:${IMAGE_TAG}'
+                    sh 'docker push cloudnative/flask-api:\${IMAGE_TAG}'
                     sh 'docker push cloudnative/flask-api:latest'
-                    sh 'docker push cloudnative/react-dashboard:${IMAGE_TAG}'
+                    sh 'docker push cloudnative/react-dashboard:\${IMAGE_TAG}'
                     sh 'docker push cloudnative/react-dashboard:latest'
                 }
             }
@@ -300,8 +299,8 @@ spec:
             steps {
                 script {
                     sh 'kubectl apply -f kubernetes/'
-                    sh 'kubectl set image deployment/backend-api flask-api=cloudnative/flask-api:${IMAGE_TAG}'
-                    sh 'kubectl set image deployment/frontend-dashboard react-app=cloudnative/react-dashboard:${IMAGE_TAG}'
+                    sh 'kubectl set image deployment/backend-api flask-api=cloudnative/flask-api:\${IMAGE_TAG}'
+                    sh 'kubectl set image deployment/frontend-dashboard react-app=cloudnative/react-dashboard:\${IMAGE_TAG}'
                     sh 'kubectl rollout status deployment/backend-api'
                     sh 'kubectl rollout status deployment/frontend-dashboard'
                 }

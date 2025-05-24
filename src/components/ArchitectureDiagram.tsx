@@ -8,7 +8,8 @@ import {
   GitBranch,
   Container,
   Cloud,
-  Cpu
+  Cpu,
+  Route
 } from 'lucide-react';
 
 export const ArchitectureDiagram = () => {
@@ -46,12 +47,28 @@ export const ArchitectureDiagram = () => {
       position: { x: 0, y: 3 }
     },
     {
-      id: 'ingress',
-      name: 'Nginx Ingress',
-      type: 'Load Balancer',
-      icon: Shield,
+      id: 'gateway',
+      name: 'Nginx Gateway',
+      type: 'API Gateway',
+      icon: Route,
       status: 'running',
       position: { x: 1, y: 0 }
+    },
+    {
+      id: 'loadbalancer',
+      name: 'Load Balancer',
+      type: 'Traffic Distribution',
+      icon: Shield,
+      status: 'running',
+      position: { x: 0, y: 0 }
+    },
+    {
+      id: 'proxy',
+      name: 'Reverse Proxy',
+      type: 'Gateway Component',
+      icon: Container,
+      status: 'running',
+      position: { x: 2, y: 0 }
     }
   ];
 
@@ -81,7 +98,7 @@ export const ArchitectureDiagram = () => {
       </div>
       
       <div className="relative">
-        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-24">
+        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-16">
           {components.map((component) => {
             const Icon = component.icon;
             return (
@@ -112,42 +129,21 @@ export const ArchitectureDiagram = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
-        {/* Downward arrows above each box - moved higher */}
-        <div className="absolute -top-16 left-0 right-0 flex justify-center md:justify-between">
+        {/* Small arrows pointing to each box */}
+        <div className="absolute -top-6 left-0 right-0 flex justify-center md:justify-between px-4">
           <div className="flex-1 flex justify-center">
-            <svg width="24" height="24" className="text-blue-400">
-              <defs>
-                <marker id="arrowhead-down-1" markerWidth="10" markerHeight="7" 
-                        refX="5" refY="6" orient="auto">
-                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
-                </marker>
-              </defs>
-              <line x1="12" y1="4" x2="12" y2="20" 
-                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-1)" />
+            <svg width="16" height="16" className="text-blue-400">
+              <polygon points="8,2 6,6 10,6" fill="#60a5fa" />
             </svg>
           </div>
           <div className="flex-1 flex justify-center">
-            <svg width="24" height="24" className="text-blue-400">
-              <defs>
-                <marker id="arrowhead-down-2" markerWidth="10" markerHeight="7" 
-                        refX="5" refY="6" orient="auto">
-                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
-                </marker>
-              </defs>
-              <line x1="12" y1="4" x2="12" y2="20" 
-                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-2)" />
+            <svg width="16" height="16" className="text-blue-400">
+              <polygon points="8,2 6,6 10,6" fill="#60a5fa" />
             </svg>
           </div>
           <div className="flex-1 flex justify-center">
-            <svg width="24" height="24" className="text-blue-400">
-              <defs>
-                <marker id="arrowhead-down-3" markerWidth="10" markerHeight="7" 
-                        refX="5" refY="6" orient="auto">
-                  <polygon points="0 0, 10 0, 5 7" fill="#60a5fa" />
-                </marker>
-              </defs>
-              <line x1="12" y1="4" x2="12" y2="20" 
-                    stroke="#60a5fa" strokeWidth="2" markerEnd="url(#arrowhead-down-3)" />
+            <svg width="16" height="16" className="text-blue-400">
+              <polygon points="8,2 6,6 10,6" fill="#60a5fa" />
             </svg>
           </div>
         </div>

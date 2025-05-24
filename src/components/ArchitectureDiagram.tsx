@@ -81,7 +81,7 @@ export const ArchitectureDiagram = () => {
       </div>
       
       <div className="relative">
-        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-16">
+        <div className="grid grid-cols-3 grid-rows-4 gap-8 min-h-96 mb-24">
           {components.map((component) => {
             const Icon = component.icon;
             return (
@@ -112,8 +112,8 @@ export const ArchitectureDiagram = () => {
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative">
-        {/* Downward arrows above each box */}
-        <div className="absolute -top-8 left-0 right-0 flex justify-center md:justify-between">
+        {/* Downward arrows above each box - moved higher */}
+        <div className="absolute -top-16 left-0 right-0 flex justify-center md:justify-between">
           <div className="flex-1 flex justify-center">
             <svg width="24" height="24" className="text-blue-400">
               <defs>

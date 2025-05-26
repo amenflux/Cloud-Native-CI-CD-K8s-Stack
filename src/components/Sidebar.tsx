@@ -7,7 +7,8 @@ import {
   Shield, 
   Server,
   Database,
-  Cloud
+  Cloud,
+  Terminal
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -20,6 +21,7 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
     { id: 'architecture', label: 'Architecture', icon: Network },
     { id: 'configs', label: 'Config Files', icon: FileCode2 },
     { id: 'deployments', label: 'Deployments', icon: Rocket },
+    { id: 'deployment-guide', label: 'Deploy Guide', icon: Terminal },
     { id: 'security', label: 'Security', icon: Shield },
   ];
 
@@ -31,8 +33,8 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
             <Cloud className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-white font-bold">DevOps Stack</h2>
-            <p className="text-slate-400 text-sm">v1.0.0</p>
+            <h2 className="text-white font-bold">WordPress Stack</h2>
+            <p className="text-slate-400 text-sm">v2.0.0</p>
           </div>
         </div>
         
@@ -59,13 +61,16 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
         <div className="mt-12 p-4 bg-slate-700/50 rounded-lg">
           <div className="flex items-center gap-2 mb-2">
             <Server className="w-4 h-4 text-green-400" />
-            <span className="text-sm text-slate-300">Cluster Status</span>
+            <span className="text-sm text-slate-300">WordPress Status</span>
           </div>
           <div className="text-green-400 text-sm font-mono">
             ● 3 nodes active
           </div>
           <div className="text-blue-400 text-sm font-mono">
-            ● 12 pods running
+            ● 8 pods running
+          </div>
+          <div className="text-purple-400 text-sm font-mono">
+            ● MySQL + MongoDB
           </div>
         </div>
       </div>

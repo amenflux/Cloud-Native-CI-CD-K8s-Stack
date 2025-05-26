@@ -6,6 +6,7 @@ import { ConfigManager } from '../components/ConfigManager';
 import { DeploymentStatus } from '../components/DeploymentStatus';
 import { SecurityOverview } from '../components/SecurityOverview';
 import { QuickActions } from '../components/QuickActions';
+import { WordPressDeploymentGuide } from '../components/WordPressDeploymentGuide';
 
 const Index = () => {
   const [activeView, setActiveView] = useState('architecture');
@@ -18,6 +19,8 @@ const Index = () => {
         return <ConfigManager />;
       case 'deployments':
         return <DeploymentStatus />;
+      case 'deployment-guide':
+        return <WordPressDeploymentGuide />;
       case 'security':
         return <SecurityOverview />;
       default:
@@ -32,10 +35,10 @@ const Index = () => {
         <main className="flex-1 p-6">
           <header className="mb-8">
             <h1 className="text-4xl font-bold text-white mb-2">
-              CloudNative SecureStack
+              WordPress CloudNative Stack
             </h1>
             <p className="text-blue-200">
-              DevOps Infrastructure Dashboard & Configuration Manager
+              Production-Ready WordPress with MySQL, MongoDB & Advanced DevOps Automation
             </p>
           </header>
           <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">

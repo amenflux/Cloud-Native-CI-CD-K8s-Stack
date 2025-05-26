@@ -83,8 +83,8 @@ export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps
       {/* Author Credit at Bottom */}
       <div className="p-4 border-t border-slate-700">
         <div className="text-center">
-          <div className="text-slate-400 text-xs mb-1">By:</div>
-          <div className="text-white text-sm font-medium animate-pulse">
+          <div className="text-slate-400 text-xs mb-1">Created by:</div>
+          <div className="text-white text-sm font-medium">
             Amen Bouteraa
           </div>
         </div>

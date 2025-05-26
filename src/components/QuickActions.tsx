@@ -11,7 +11,10 @@ import {
   CheckCircle,
   AlertCircle,
   Clock,
-  Download
+  Download,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { deploymentStore } from '../store/deploymentStore';
@@ -26,6 +29,14 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
   const [showTerminal, setShowTerminal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [scaleValues, setScaleValues] = useState<{[key: string]: number}>({});
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([
+    "$ kubectl get pods -n wordpress",
+    "NAME                          READY   STATUS    RESTARTS   AGE"
+  ]);
+  const [terminalInput, setTerminalInput] = useState('');
+  const [theme, setTheme] = useState('dark');
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [notifications, setNotifications] = useState(true);
 
   const actions = [
     {
@@ -79,6 +90,50 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
     }
   };
 
+  const executeTerminalCommand = (command: string) => {
+    const newOutput = [...terminalOutput, `$ ${command}`];
+    
+    if (command.includes('get pods')) {
+      deploymentState.services.forEach((service: any, index: number) => {
+        Array.from({length: service.replicas}, (_, i) => {
+          newOutput.push(`${service.name}-${Math.random().toString(36).substring(7)}     1/1     ${service.status === 'running' ? 'Running' : 'Pending'}   0          2h`);
+        });
+      });
+    } else if (command.includes('get svc')) {
+      newOutput.push("NAME        TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)");
+      newOutput.push("wordpress   NodePort       10.100.200.1    <none>          80:30080/TCP");
+      newOutput.push("mysql       ClusterIP      10.100.200.2    <none>          3306/TCP");
+      newOutput.push("mongodb     ClusterIP      10.100.200.3    <none>          27017/TCP");
+    } else if (command.includes('get deployment')) {
+      newOutput.push("NAME        READY   UP-TO-DATE   AVAILABLE   AGE");
+      deploymentState.services.forEach((service: any) => {
+        newOutput.push(`${service.name}      ${service.replicas}/${service.replicas}     ${service.replicas}            ${service.replicas}           2h`);
+      });
+    } else if (command.includes('describe')) {
+      newOutput.push("Name:         wordpress-deployment");
+      newOutput.push("Namespace:    wordpress");
+      newOutput.push("Labels:       app=wordpress");
+      newOutput.push("Replicas:     2 desired | 2 updated | 2 total | 2 available");
+    } else if (command === 'help') {
+      newOutput.push("Available commands:");
+      newOutput.push("  kubectl get pods -n wordpress");
+      newOutput.push("  kubectl get svc -n wordpress");
+      newOutput.push("  kubectl get deployment -n wordpress");
+      newOutput.push("  kubectl describe deployment wordpress -n wordpress");
+      newOutput.push("  clear");
+    } else if (command === 'clear') {
+      setTerminalOutput([]);
+      setTerminalInput('');
+      return;
+    } else {
+      newOutput.push(`bash: ${command}: command not found`);
+      newOutput.push("Type 'help' for available commands");
+    }
+    
+    setTerminalOutput(newOutput);
+    setTerminalInput('');
+  };
+
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -104,7 +159,6 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         break;
         
       case 'scale':
-        // Initialize scale values with current replicas
         const initialValues: {[key: string]: number} = {};
         deploymentState.services.forEach((service: any) => {
           initialValues[service.name] = service.replicas;
@@ -152,7 +206,6 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         break;
 
       case 'download':
-        // Download all configuration files
         downloadFile(deploymentStore.generateTerraformConfig(), 'terraform-wordpress-stack.tf');
         downloadFile(deploymentStore.generateAnsiblePlaybook(), 'ansible-wordpress-playbook.yml');
         downloadFile(deploymentStore.generateKubernetesManifests(), 'kubernetes-manifests.yaml');
@@ -173,7 +226,7 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
     setShowScaleDialog(false);
     toast({
       title: "Scaling Applied",
-      description: "Services are being scaled to new replica counts",
+      description: "Services are being scaled to new replica counts. Configuration files updated.",
     });
   };
 
@@ -267,34 +320,76 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-lg w-full">
-            <h3 className="text-white font-bold mb-4">Deployment Settings</h3>
-            <div className="space-y-4">
+            <h3 className="text-white font-bold mb-4">Settings</h3>
+            <div className="space-y-6">
               <div>
-                <label className="text-slate-300 text-sm">Default Registry</label>
-                <input 
-                  type="text" 
-                  defaultValue="docker.io"
-                  className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded text-white" 
-                />
+                <label className="text-slate-300 text-sm font-medium mb-3 block">Theme</label>
+                <div className="flex gap-2">
+                  {[
+                    { id: 'light', icon: Sun, label: 'Light' },
+                    { id: 'dark', icon: Moon, label: 'Dark' },
+                    { id: 'system', icon: Monitor, label: 'System' }
+                  ].map((themeOption) => {
+                    const Icon = themeOption.icon;
+                    return (
+                      <button
+                        key={themeOption.id}
+                        onClick={() => setTheme(themeOption.id)}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                          theme === themeOption.id ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                        {themeOption.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+              
               <div>
-                <label className="text-slate-300 text-sm">Namespace</label>
-                <input 
-                  type="text" 
-                  defaultValue="wordpress"
-                  className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded text-white" 
-                />
+                <label className="text-slate-300 text-sm font-medium">Auto-refresh Interval</label>
+                <select 
+                  className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded text-white"
+                  defaultValue="30"
+                >
+                  <option value="10">10 seconds</option>
+                  <option value="30">30 seconds</option>
+                  <option value="60">1 minute</option>
+                  <option value="300">5 minutes</option>
+                </select>
               </div>
-              <div>
-                <label className="text-slate-300 text-sm">Auto-scale Threshold (%)</label>
-                <input 
-                  type="number" 
-                  defaultValue="70"
-                  min="0" 
-                  max="100"
-                  className="w-full mt-1 p-2 bg-slate-700 border border-slate-600 rounded text-white" 
-                />
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300 text-sm">Enable Notifications</span>
+                  <button
+                    onClick={() => setNotifications(!notifications)}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      notifications ? 'bg-blue-600' : 'bg-slate-600'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${
+                      notifications ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-300 text-sm">Auto-refresh</span>
+                  <button
+                    onClick={() => setAutoRefresh(!autoRefresh)}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      autoRefresh ? 'bg-blue-600' : 'bg-slate-600'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 bg-white rounded-full transition-transform ${
+                      autoRefresh ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
               </div>
+
               <div className="flex gap-2">
                 <button 
                   onClick={() => {
@@ -320,12 +415,12 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         </div>
       )}
 
-      {/* Enhanced Terminal Dialog */}
+      {/* Interactive Terminal Dialog */}
       {showTerminal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-600 rounded-xl p-6 max-w-4xl w-full h-96">
+          <div className="bg-slate-900 border border-slate-600 rounded-xl p-6 max-w-4xl w-full h-96 flex flex-col">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-white font-bold">Live Kubectl Terminal</h3>
+              <h3 className="text-white font-bold">Interactive Kubectl Terminal</h3>
               <button 
                 onClick={() => setShowTerminal(false)}
                 className="text-slate-400 hover:text-white"
@@ -333,21 +428,26 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
                 ✕
               </button>
             </div>
-            <div className="bg-black rounded p-4 font-mono text-sm text-green-400 h-full overflow-y-auto">
-              <div>$ kubectl get pods -n wordpress</div>
-              <div>NAME                          READY   STATUS    RESTARTS   AGE</div>
-              {deploymentState.services.map((service: any, index: number) => 
-                Array.from({length: service.replicas}, (_, i) => (
-                  <div key={`${service.name}-${i}`}>
-                    {service.name}-{Math.random().toString(36).substring(7)}     1/1     {service.status === 'running' ? 'Running' : 'Pending'}   0          2h
-                  </div>
-                ))
-              )}
-              <div className="mt-2">$ kubectl get svc -n wordpress</div>
-              <div>NAME        TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)</div>
-              <div>wordpress   LoadBalancer   10.100.200.1    203.0.113.10    80:30000/TCP</div>
-              <div>mysql       ClusterIP      10.100.200.2    &lt;none&gt;         3306/TCP</div>
-              <div className="mt-2">$ <span className="animate-pulse">|</span></div>
+            <div className="bg-black rounded p-4 font-mono text-sm text-green-400 flex-1 overflow-y-auto">
+              {terminalOutput.map((line, index) => (
+                <div key={index}>{line}</div>
+              ))}
+              <div className="flex items-center mt-2">
+                <span>$ </span>
+                <input
+                  type="text"
+                  value={terminalInput}
+                  onChange={(e) => setTerminalInput(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && terminalInput.trim()) {
+                      executeTerminalCommand(terminalInput.trim());
+                    }
+                  }}
+                  className="bg-transparent border-none outline-none text-green-400 flex-1 ml-1"
+                  placeholder="Type 'help' for available commands"
+                  autoFocus
+                />
+              </div>
             </div>
           </div>
         </div>

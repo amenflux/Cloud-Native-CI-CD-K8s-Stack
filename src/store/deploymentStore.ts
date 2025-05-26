@@ -13,6 +13,11 @@ interface DeploymentState {
   totalPods: number;
   databases: string;
   lastDeployment: string | null;
+  currentConfigs: {
+    terraform: string;
+    ansible: string;
+    kubernetes: string;
+  };
 }
 
 class DeploymentStore {
@@ -28,10 +33,19 @@ class DeploymentStore {
     nodes: 3,
     totalPods: 10,
     databases: 'MySQL + MongoDB',
-    lastDeployment: null
+    lastDeployment: null,
+    currentConfigs: {
+      terraform: '',
+      ansible: '',
+      kubernetes: ''
+    }
   };
 
   private listeners: (() => void)[] = [];
+
+  constructor() {
+    this.updateConfigs();
+  }
 
   subscribe(listener: () => void) {
     this.listeners.push(listener);
@@ -42,6 +56,14 @@ class DeploymentStore {
 
   private notify() {
     this.listeners.forEach(listener => listener());
+  }
+
+  private updateConfigs() {
+    this.state.currentConfigs = {
+      terraform: this.generateTerraformConfig(),
+      ansible: this.generateAnsiblePlaybook(),
+      kubernetes: this.generateKubernetesManifests()
+    };
   }
 
   getState() {
@@ -55,11 +77,15 @@ class DeploymentStore {
       service.lastUpdate = 'Just now';
       service.status = 'pending';
       
+      // Update configs immediately
+      this.updateConfigs();
+      
       // Simulate deployment completion after 2 seconds
       setTimeout(() => {
         service.status = 'running';
         service.lastUpdate = 'Just deployed';
         this.updatePodCount();
+        this.updateConfigs();
         this.notify();
       }, 2000);
       
@@ -78,6 +104,7 @@ class DeploymentStore {
       service.lastUpdate = 'Deploying...';
     });
     this.state.lastDeployment = new Date().toISOString();
+    this.updateConfigs();
     this.notify();
 
     // Simulate deployment completion
@@ -86,6 +113,7 @@ class DeploymentStore {
         service.status = 'running';
         service.lastUpdate = 'Just deployed';
       });
+      this.updateConfigs();
       this.notify();
     }, 5000);
   }
@@ -94,7 +122,14 @@ class DeploymentStore {
     this.state.services.forEach(service => {
       service.status = 'pending';
       service.lastUpdate = 'Rolling back...';
+      // Reset to default replicas
+      if (service.name === 'wordpress') service.replicas = 2;
+      else if (service.name === 'flask-api') service.replicas = 3;
+      else if (service.name === 'nginx-gateway') service.replicas = 2;
+      else service.replicas = 1;
     });
+    this.updatePodCount();
+    this.updateConfigs();
     this.notify();
 
     setTimeout(() => {
@@ -102,6 +137,7 @@ class DeploymentStore {
         service.status = 'running';
         service.lastUpdate = 'Rolled back';
       });
+      this.updateConfigs();
       this.notify();
     }, 3000);
   }
@@ -109,6 +145,7 @@ class DeploymentStore {
   generateTerraformConfig(): string {
     return `# Terraform Configuration for WordPress Stack
 # Generated on: ${new Date().toISOString()}
+# Current Replicas: WordPress(${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}), MySQL(${this.state.services.find(s => s.name === 'mysql')?.replicas || 1})
 
 terraform {
   required_providers {
@@ -189,6 +226,17 @@ resource "aws_db_instance" "wordpress_mysql" {
   skip_final_snapshot = true
 }
 
+# DocumentDB for MongoDB
+resource "aws_docdb_cluster" "wordpress_mongodb" {
+  cluster_identifier      = "wordpress-mongodb"
+  engine                 = "docdb"
+  master_username        = "admin"
+  master_password        = var.mongodb_password
+  backup_retention_period = 7
+  preferred_backup_window = "07:00-09:00"
+  skip_final_snapshot    = true
+}
+
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -201,12 +249,22 @@ variable "mysql_password" {
   sensitive   = true
 }
 
+variable "mongodb_password" {
+  description = "MongoDB admin password"
+  type        = string
+  sensitive   = true
+}
+
 output "cluster_endpoint" {
   value = aws_eks_cluster.wordpress_cluster.endpoint
 }
 
 output "mysql_endpoint" {
   value = aws_db_instance.wordpress_mysql.endpoint
+}
+
+output "mongodb_endpoint" {
+  value = aws_docdb_cluster.wordpress_mongodb.endpoint
 }`;
   }
 
@@ -214,6 +272,7 @@ output "mysql_endpoint" {
     return `---
 # Ansible Playbook for WordPress Stack Configuration
 # Generated on: ${new Date().toISOString()}
+# Current Configuration: ${this.state.services.reduce((acc, s) => acc + s.replicas, 0)} total pods
 
 - name: Configure WordPress Infrastructure
   hosts: kubernetes_nodes
@@ -221,6 +280,8 @@ output "mysql_endpoint" {
   vars:
     kubernetes_version: "1.28.0"
     docker_version: "24.0"
+    wordpress_replicas: ${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}
+    mysql_replicas: ${this.state.services.find(s => s.name === 'mysql')?.replicas || 1}
     
   tasks:
     - name: Update system packages
@@ -253,13 +314,6 @@ output "mysql_endpoint" {
       pip:
         name: awscli
         state: present
-    
-    - name: Configure kubectl for EKS
-      shell: |
-        aws eks update-kubeconfig --region {{ aws_region }} --name wordpress-cluster
-      environment:
-        AWS_ACCESS_KEY_ID: "{{ aws_access_key }}"
-        AWS_SECRET_ACCESS_KEY: "{{ aws_secret_key }}"
 
 - name: Deploy WordPress Stack
   hosts: localhost
@@ -283,7 +337,7 @@ output "mysql_endpoint" {
             name: mysql
             namespace: "{{ namespace }}"
           spec:
-            replicas: ${this.state.services.find(s => s.name === 'mysql')?.replicas || 1}
+            replicas: "{{ mysql_replicas }}"
             selector:
               matchLabels:
                 app: mysql
@@ -312,7 +366,7 @@ output "mysql_endpoint" {
             name: wordpress
             namespace: "{{ namespace }}"
           spec:
-            replicas: ${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}
+            replicas: "{{ wordpress_replicas }}"
             selector:
               matchLabels:
                 app: wordpress
@@ -348,6 +402,28 @@ kind: Namespace
 metadata:
   name: wordpress
 ---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mysql-secret
+  namespace: wordpress
+type: Opaque
+data:
+  root-password: d29yZHByZXNz # base64 encoded 'wordpress'
+  password: d29yZHByZXNz # base64 encoded 'wordpress'
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -380,6 +456,13 @@ spec:
             secretKeyRef:
               name: mysql-secret
               key: password
+        volumeMounts:
+        - name: wordpress-storage
+          mountPath: /var/www/html
+      volumes:
+      - name: wordpress-storage
+        persistentVolumeClaim:
+          claimName: wordpress-pvc
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -406,7 +489,7 @@ spec:
           valueFrom:
             secretKeyRef:
               name: mysql-secret
-              key: password
+              key: root-password
         - name: MYSQL_DATABASE
           value: wordpress
         volumeMounts:
@@ -416,6 +499,32 @@ spec:
       - name: mysql-storage
         persistentVolumeClaim:
           claimName: mysql-pvc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: wordpress
+spec:
+  replicas: ${services.find(s => s.name === 'mongodb')?.replicas || 1}
+  selector:
+    matchLabels:
+      app: mongodb
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:6.0
+        ports:
+        - containerPort: 27017
+        env:
+        - name: MONGO_INITDB_ROOT_USERNAME
+          value: admin
+        - name: MONGO_INITDB_ROOT_PASSWORD
+          value: mongodb123
 ---
 apiVersion: v1
 kind: Service
@@ -428,7 +537,8 @@ spec:
   ports:
   - port: 80
     targetPort: 80
-  type: LoadBalancer
+    nodePort: 30080
+  type: NodePort
 ---
 apiVersion: v1
 kind: Service
@@ -442,6 +552,18 @@ spec:
   - port: 3306
     targetPort: 3306
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: wordpress
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+    targetPort: 27017
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -450,6 +572,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: nginx
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   tls:
   - hosts:

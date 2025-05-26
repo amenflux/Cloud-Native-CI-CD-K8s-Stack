@@ -14,58 +14,11 @@ import {
   Globe
 } from 'lucide-react';
 
-export const DeploymentStatus = () => {
-  const deployments = [
-    {
-      name: 'wordpress',
-      status: 'running',
-      replicas: { desired: 2, ready: 2, available: 2 },
-      image: 'wordpress:6.3-apache',
-      lastUpdate: '2 minutes ago',
-      url: 'https://your-wordpress.com'
-    },
-    {
-      name: 'mysql',
-      status: 'running',
-      replicas: { desired: 1, ready: 1, available: 1 },
-      image: 'mysql:8.0',
-      lastUpdate: '5 minutes ago',
-      url: 'mysql://mysql-service:3306'
-    },
-    {
-      name: 'mongodb',
-      status: 'running',
-      replicas: { desired: 1, ready: 1, available: 1 },
-      image: 'mongo:6.0',
-      lastUpdate: '5 minutes ago',
-      url: 'mongodb://mongodb-service:27017'
-    },
-    {
-      name: 'redis-cache',
-      status: 'running',
-      replicas: { desired: 1, ready: 1, available: 1 },
-      image: 'redis:7-alpine',
-      lastUpdate: '10 minutes ago',
-      url: 'redis://redis-service:6379'
-    },
-    {
-      name: 'flask-api',
-      status: 'running',
-      replicas: { desired: 3, ready: 3, available: 3 },
-      image: 'cloudnative/flask-api:latest',
-      lastUpdate: '3 minutes ago',
-      url: 'https://api.your-wordpress.com'
-    },
-    {
-      name: 'nginx-gateway',
-      status: 'running',
-      replicas: { desired: 2, ready: 2, available: 2 },
-      image: 'nginx/nginx-ingress:latest',
-      lastUpdate: '1 minute ago',
-      url: 'https://your-wordpress.com'
-    }
-  ];
+interface DeploymentStatusProps {
+  deploymentState: any;
+}
 
+export const DeploymentStatus = ({ deploymentState }: DeploymentStatusProps) => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
@@ -97,10 +50,20 @@ export const DeploymentStatus = () => {
     if (url.startsWith('http')) {
       window.open(url, '_blank');
     } else {
-      // For database URLs, show connection info
       navigator.clipboard.writeText(url);
-      // Could show a toast here
     }
+  };
+
+  const getServiceUrl = (serviceName: string) => {
+    const urlMap: {[key: string]: string} = {
+      'wordpress': 'https://your-wordpress.com',
+      'mysql': 'mysql://mysql-service:3306',
+      'mongodb': 'mongodb://mongodb-service:27017',
+      'redis-cache': 'redis://redis-service:6379',
+      'flask-api': 'https://api.your-wordpress.com',
+      'nginx-gateway': 'https://your-wordpress.com'
+    };
+    return urlMap[serviceName] || '#';
   };
 
   return (
@@ -118,37 +81,37 @@ export const DeploymentStatus = () => {
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Cpu className="w-5 h-5 text-blue-400" />
-            <span className="text-white font-semibold">CPU Usage</span>
+            <span className="text-white font-semibold">Active Nodes</span>
           </div>
-          <div className="text-2xl font-bold text-blue-400">42%</div>
-          <div className="text-sm text-slate-400">2.8/6.8 cores</div>
+          <div className="text-2xl font-bold text-blue-400">{deploymentState.nodes}</div>
+          <div className="text-sm text-slate-400">Kubernetes nodes</div>
         </div>
         
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <MemoryStick className="w-5 h-5 text-purple-400" />
-            <span className="text-white font-semibold">Memory</span>
+            <span className="text-white font-semibold">Total Pods</span>
           </div>
-          <div className="text-2xl font-bold text-purple-400">68%</div>
-          <div className="text-sm text-slate-400">5.4/8.0 GB</div>
+          <div className="text-2xl font-bold text-purple-400">{deploymentState.totalPods}</div>
+          <div className="text-sm text-slate-400">Running containers</div>
         </div>
         
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <HardDrive className="w-5 h-5 text-green-400" />
-            <span className="text-white font-semibold">Storage</span>
+            <span className="text-white font-semibold">Services</span>
           </div>
-          <div className="text-2xl font-bold text-green-400">31%</div>
-          <div className="text-sm text-slate-400">62/200 GB</div>
+          <div className="text-2xl font-bold text-green-400">{deploymentState.services.length}</div>
+          <div className="text-sm text-slate-400">Active services</div>
         </div>
 
         <div className="bg-slate-700/50 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
             <Globe className="w-5 h-5 text-orange-400" />
-            <span className="text-white font-semibold">Traffic</span>
+            <span className="text-white font-semibold">Databases</span>
           </div>
-          <div className="text-2xl font-bold text-orange-400">1.2k</div>
-          <div className="text-sm text-slate-400">req/min</div>
+          <div className="text-2xl font-bold text-orange-400">2</div>
+          <div className="text-sm text-slate-400">{deploymentState.databases}</div>
         </div>
       </div>
 
@@ -205,40 +168,35 @@ export const DeploymentStatus = () => {
             </tr>
           </thead>
           <tbody>
-            {deployments.map((deployment) => (
-              <tr key={deployment.name} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+            {deploymentState.services.map((service: any) => (
+              <tr key={service.name} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                 <td className="py-4 px-4">
                   <div className="flex items-center gap-3">
-                    {getStatusIcon(deployment.status)}
-                    <span className="text-white font-medium">{deployment.name}</span>
+                    {getStatusIcon(service.status)}
+                    <span className="text-white font-medium">{service.name}</span>
                   </div>
                 </td>
                 <td className="py-4 px-4">
-                  <span className={getStatusBadge(deployment.status)}>
-                    {deployment.status}
+                  <span className={getStatusBadge(service.status)}>
+                    {service.status}
                   </span>
                 </td>
                 <td className="py-4 px-4">
                   <span className="text-slate-300">
-                    {deployment.replicas.ready}/{deployment.replicas.desired}
+                    {service.replicas}
                   </span>
-                  {deployment.replicas.ready !== deployment.replicas.desired && (
-                    <span className="ml-2 text-yellow-400 text-sm">
-                      (scaling)
-                    </span>
-                  )}
                 </td>
                 <td className="py-4 px-4">
                   <span className="text-slate-400 font-mono text-sm">
-                    {deployment.image}
+                    {service.image}
                   </span>
                 </td>
                 <td className="py-4 px-4">
                   <button
-                    onClick={() => openUrl(deployment.url)}
+                    onClick={() => openUrl(getServiceUrl(service.name))}
                     className="flex items-center gap-1 text-blue-400 hover:text-blue-300 text-sm"
                   >
-                    {deployment.url.startsWith('http') ? (
+                    {getServiceUrl(service.name).startsWith('http') ? (
                       <>
                         <ExternalLink className="w-3 h-3" />
                         Open
@@ -253,7 +211,7 @@ export const DeploymentStatus = () => {
                 </td>
                 <td className="py-4 px-4">
                   <span className="text-slate-400 text-sm">
-                    {deployment.lastUpdate}
+                    {service.lastUpdate}
                   </span>
                 </td>
               </tr>

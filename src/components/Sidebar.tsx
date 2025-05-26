@@ -14,9 +14,14 @@ import {
 interface SidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  systemStats: {
+    nodes: number;
+    pods: number;
+    databases: string;
+  };
 }
 
-export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
+export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps) => {
   const menuItems = [
     { id: 'architecture', label: 'Architecture', icon: Network },
     { id: 'configs', label: 'Config Files', icon: FileCode2 },
@@ -26,8 +31,8 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
   ];
 
   return (
-    <div className="w-64 bg-slate-800/90 backdrop-blur-sm border-r border-slate-700 min-h-screen">
-      <div className="p-6">
+    <div className="w-64 bg-slate-800/90 backdrop-blur-sm border-r border-slate-700 min-h-screen flex flex-col">
+      <div className="p-6 flex-1">
         <div className="flex items-center gap-3 mb-8">
           <div className="p-2 bg-blue-600 rounded-lg">
             <Cloud className="w-6 h-6 text-white" />
@@ -64,13 +69,23 @@ export const Sidebar = ({ activeView, setActiveView }: SidebarProps) => {
             <span className="text-sm text-slate-300">WordPress Status</span>
           </div>
           <div className="text-green-400 text-sm font-mono">
-            ● 3 nodes active
+            ● {systemStats.nodes} nodes active
           </div>
           <div className="text-blue-400 text-sm font-mono">
-            ● 8 pods running
+            ● {systemStats.pods} pods running
           </div>
           <div className="text-purple-400 text-sm font-mono">
-            ● MySQL + MongoDB
+            ● {systemStats.databases}
+          </div>
+        </div>
+      </div>
+      
+      {/* Author Credit at Bottom */}
+      <div className="p-4 border-t border-slate-700">
+        <div className="text-center">
+          <div className="text-slate-400 text-xs mb-1">By:</div>
+          <div className="text-white text-sm font-medium animate-pulse">
+            Amen Bouteraa
           </div>
         </div>
       </div>

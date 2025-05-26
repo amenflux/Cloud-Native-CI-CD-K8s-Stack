@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
 import { ConfigManager } from '../components/ConfigManager';
@@ -7,18 +7,34 @@ import { DeploymentStatus } from '../components/DeploymentStatus';
 import { SecurityOverview } from '../components/SecurityOverview';
 import { QuickActions } from '../components/QuickActions';
 import { WordPressDeploymentGuide } from '../components/WordPressDeploymentGuide';
+import { deploymentStore } from '../store/deploymentStore';
 
 const Index = () => {
   const [activeView, setActiveView] = useState('architecture');
+  const [deploymentState, setDeploymentState] = useState(deploymentStore.getState());
+
+  useEffect(() => {
+    const unsubscribe = deploymentStore.subscribe(() => {
+      setDeploymentState(deploymentStore.getState());
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const systemStats = {
+    nodes: deploymentState.nodes,
+    pods: deploymentState.totalPods,
+    databases: deploymentState.databases
+  };
 
   const renderMainContent = () => {
     switch (activeView) {
       case 'architecture':
         return <ArchitectureDiagram />;
       case 'configs':
-        return <ConfigManager />;
+        return <ConfigManager deploymentState={deploymentState} />;
       case 'deployments':
-        return <DeploymentStatus />;
+        return <DeploymentStatus deploymentState={deploymentState} />;
       case 'deployment-guide':
         return <WordPressDeploymentGuide />;
       case 'security':
@@ -31,7 +47,11 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       <div className="flex">
-        <Sidebar activeView={activeView} setActiveView={setActiveView} />
+        <Sidebar 
+          activeView={activeView} 
+          setActiveView={setActiveView}
+          systemStats={systemStats}
+        />
         <main className="flex-1 p-6">
           <header className="mb-8">
             <h1 className="text-4xl font-bold text-white mb-2">
@@ -46,7 +66,7 @@ const Index = () => {
               {renderMainContent()}
             </div>
             <div className="xl:col-span-1">
-              <QuickActions />
+              <QuickActions deploymentState={deploymentState} />
             </div>
           </div>
         </main>

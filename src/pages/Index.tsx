@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
@@ -7,6 +6,7 @@ import { DeploymentStatus } from '../components/DeploymentStatus';
 import { SecurityOverview } from '../components/SecurityOverview';
 import { QuickActions } from '../components/QuickActions';
 import { WordPressDeploymentGuide } from '../components/WordPressDeploymentGuide';
+import { JenkinsConfig } from '../components/JenkinsConfig';
 import { deploymentStore } from '../store/deploymentStore';
 
 const Index = () => {
@@ -35,6 +35,8 @@ const Index = () => {
         return <ConfigManager deploymentState={deploymentState} />;
       case 'deployments':
         return <DeploymentStatus deploymentState={deploymentState} />;
+      case 'jenkins':
+        return <JenkinsConfig />;
       case 'deployment-guide':
         return <WordPressDeploymentGuide />;
       case 'security':

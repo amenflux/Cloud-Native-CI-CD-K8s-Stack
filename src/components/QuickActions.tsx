@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { deploymentStore } from '../store/deploymentStore';
+import { useTheme } from '../contexts/ThemeContext';
+import { HPAConfig } from './HPAConfig';
 
 interface QuickActionsProps {
   deploymentState: any;
@@ -25,9 +27,11 @@ interface QuickActionsProps {
 
 export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const [showScaleDialog, setShowScaleDialog] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showHPAConfig, setShowHPAConfig] = useState(false);
   const [scaleValues, setScaleValues] = useState<{[key: string]: number}>({});
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
     "Welcome to Interactive Kubectl Terminal",
@@ -35,7 +39,6 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
     "$ "
   ]);
   const [terminalInput, setTerminalInput] = useState('');
-  const [theme, setTheme] = useState('dark');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [notifications, setNotifications] = useState(true);
 
@@ -280,10 +283,7 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         break;
         
       case 'autoscale':
-        toast({
-          title: "Auto-scaling Enabled",
-          description: "HPA configured for CPU and memory thresholds",
-        });
+        setShowHPAConfig(true);
         break;
         
       case 'settings':
@@ -294,6 +294,15 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         downloadAllConfigs();
         break;
     }
+  };
+
+  const applyHPAConfig = (config: any) => {
+    setShowHPAConfig(false);
+    // Apply HPA configuration logic here
+    toast({
+      title: "HPA Configuration Applied",
+      description: `Auto-scaling configured: ${config.minReplicas}-${config.maxReplicas} replicas, CPU: ${config.targetCPUUtilization}%, Memory: ${config.targetMemoryUtilization}%`,
+    });
   };
 
   const applyScaling = () => {
@@ -412,7 +421,7 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
                     return (
                       <button
                         key={themeOption.id}
-                        onClick={() => setTheme(themeOption.id)}
+                        onClick={() => setTheme(themeOption.id as 'light' | 'dark' | 'system')}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                           theme === themeOption.id ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                         }`}
@@ -491,6 +500,14 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* HPA Configuration Dialog */}
+      {showHPAConfig && (
+        <HPAConfig 
+          onApply={applyHPAConfig}
+          onCancel={() => setShowHPAConfig(false)}
+        />
       )}
 
       {/* Interactive Terminal Dialog */}

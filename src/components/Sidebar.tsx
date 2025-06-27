@@ -9,7 +9,8 @@ import {
   BookOpen,
   Server,
   Users,
-  Activity
+  Activity,
+  Wrench
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps
     { id: 'architecture', label: 'Architecture', icon: Layers },
     { id: 'deployments', label: 'Deployments', icon: Server },
     { id: 'configs', label: 'Configurations', icon: FileCode2 },
+    { id: 'jenkins', label: 'Jenkins', icon: Wrench },
     { id: 'deployment-guide', label: 'Deploy Guide', icon: BookOpen },
     { id: 'security', label: 'Security', icon: Shield },
   ];

@@ -35,12 +35,15 @@ export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps
 
   return (
     <aside className="w-80 min-h-screen bg-slate-900/50 backdrop-blur-sm border-r border-slate-700 p-6 flex flex-col">
-      <div className="mb-12">
-        <h2 className="text-xl font-bold text-white mb-2">CloudNative Stack</h2>
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-2">
+          <h2 className="text-xl font-bold text-white">CloudNative Stack</h2>
+          <span className="text-xs bg-blue-600 text-white px-2 py-1 rounded-full font-medium">v1.1</span>
+        </div>
         <p className="text-slate-400 text-sm">Production WordPress with DevOps</p>
       </div>
 
-      <nav className="space-y-2 mb-8 mt-4">
+      <nav className="space-y-2 mb-8 mt-6">
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (

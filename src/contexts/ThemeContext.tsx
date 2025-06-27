@@ -22,7 +22,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     const root = window.document.documentElement;
     
-    const getSystemTheme = () => {
+    const getSystemTheme = (): 'light' | 'dark' => {
       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     };
 
@@ -35,9 +35,13 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     setActualTheme(resolvedTheme);
+    
+    // Remove existing theme classes
     root.classList.remove('light', 'dark');
+    // Add the resolved theme class
     root.classList.add(resolvedTheme);
     
+    // Store the theme preference
     localStorage.setItem('theme', theme);
 
     // Listen for system theme changes when in system mode
@@ -54,6 +58,25 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
       return () => mediaQuery.removeEventListener('change', handleChange);
     }
   }, [theme]);
+
+  // Initialize theme on mount
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const getSystemTheme = (): 'light' | 'dark' => {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    };
+
+    let initialTheme: 'light' | 'dark';
+    if (theme === 'system') {
+      initialTheme = getSystemTheme();
+    } else {
+      initialTheme = theme;
+    }
+
+    root.classList.remove('light', 'dark');
+    root.classList.add(initialTheme);
+    setActualTheme(initialTheme);
+  }, []);
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, actualTheme }}>

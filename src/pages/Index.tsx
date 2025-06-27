@@ -45,32 +45,30 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
-      <div className="flex">
-        <Sidebar 
-          activeView={activeView} 
-          setActiveView={setActiveView}
-          systemStats={systemStats}
-        />
-        <main className="flex-1 p-6">
-          <header className="mb-8">
-            <h1 className="text-4xl font-bold text-white mb-2">
-              WordPress CloudNative Stack
-            </h1>
-            <p className="text-blue-200">
-              Production-Ready WordPress with MySQL, MongoDB & Advanced DevOps Automation
-            </p>
-          </header>
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            <div className="xl:col-span-3">
-              {renderMainContent()}
-            </div>
-            <div className="xl:col-span-1">
-              <QuickActions deploymentState={deploymentState} />
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex">
+      <Sidebar 
+        activeView={activeView} 
+        setActiveView={setActiveView}
+        systemStats={systemStats}
+      />
+      <main className="flex-1 p-8">
+        <header className="mb-12">
+          <h1 className="text-4xl font-bold text-white mb-4">
+            WordPress CloudNative Stack
+          </h1>
+          <p className="text-blue-200 text-lg">
+            Production-Ready WordPress with MySQL, MongoDB & Advanced DevOps Automation
+          </p>
+        </header>
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+          <div className="xl:col-span-3">
+            {renderMainContent()}
           </div>
-        </main>
-      </div>
+          <div className="xl:col-span-1">
+            <QuickActions deploymentState={deploymentState} />
+          </div>
+        </div>
+      </main>
     </div>
   );
 };

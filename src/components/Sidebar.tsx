@@ -32,13 +32,13 @@ export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps
   ];
 
   return (
-    <aside className="w-80 bg-slate-900/50 backdrop-blur-sm border-r border-slate-700 p-6 flex flex-col">
-      <div className="mb-8">
+    <aside className="w-80 min-h-screen bg-slate-900/50 backdrop-blur-sm border-r border-slate-700 p-6 flex flex-col">
+      <div className="mb-12">
         <h2 className="text-xl font-bold text-white mb-2">CloudNative Stack</h2>
         <p className="text-slate-400 text-sm">Production WordPress with DevOps</p>
       </div>
 
-      <nav className="space-y-2 mb-8">
+      <nav className="space-y-2 mb-8 mt-4">
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (
@@ -80,9 +80,13 @@ export const Sidebar = ({ activeView, setActiveView, systemStats }: SidebarProps
       </div>
 
       <div className="mt-auto">
-        <div className="bg-slate-800/30 rounded-lg p-3 text-center">
-          <p className="text-slate-400 text-xs">Built by</p>
-          <p className="text-slate-300 text-sm font-medium">Amen Bouteraa</p>
+        <div className="bg-gradient-to-r from-slate-800/40 to-blue-800/20 rounded-lg p-4 text-center border border-slate-700/50 backdrop-blur-sm">
+          <div className="animate-pulse">
+            <p className="text-slate-400 text-xs mb-1">Built by</p>
+            <p className="text-slate-200 text-sm font-medium bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent animate-fade-in">
+              Amen Bouteraa
+            </p>
+          </div>
         </div>
       </div>
     </aside>

@@ -1,4 +1,3 @@
-
 interface ServiceConfig {
   name: string;
   replicas: number;
@@ -28,10 +27,11 @@ class DeploymentStore {
       { name: 'mongodb', replicas: 1, image: 'mongo:6.0', status: 'running', lastUpdate: '5 minutes ago' },
       { name: 'redis-cache', replicas: 1, image: 'redis:7-alpine', status: 'running', lastUpdate: '10 minutes ago' },
       { name: 'flask-api', replicas: 3, image: 'cloudnative/flask-api:latest', status: 'running', lastUpdate: '3 minutes ago' },
-      { name: 'nginx-gateway', replicas: 2, image: 'nginx/nginx-ingress:latest', status: 'running', lastUpdate: '1 minute ago' }
+      { name: 'nginx-gateway', replicas: 2, image: 'nginx/nginx-ingress:latest', status: 'running', lastUpdate: '1 minute ago' },
+      { name: 'jenkins', replicas: 1, image: 'jenkins/jenkins:lts', status: 'running', lastUpdate: '5 minutes ago' }
     ],
     nodes: 3,
-    totalPods: 10,
+    totalPods: 11,
     databases: 'MySQL + MongoDB',
     lastDeployment: null,
     currentConfigs: {
@@ -143,9 +143,9 @@ class DeploymentStore {
   }
 
   generateTerraformConfig(): string {
-    return `# Terraform Configuration for WordPress Stack
+    return `# Terraform Configuration for WordPress Stack with Jenkins CI/CD
 # Generated on: ${new Date().toISOString()}
-# Current Replicas: WordPress(${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}), MySQL(${this.state.services.find(s => s.name === 'mysql')?.replicas || 1})
+# Current Replicas: WordPress(${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}), MySQL(${this.state.services.find(s => s.name === 'mysql')?.replicas || 1}), Jenkins(${this.state.services.find(s => s.name === 'jenkins')?.replicas || 1})
 
 terraform {
   required_providers {
@@ -157,11 +157,61 @@ terraform {
       source  = "hashicorp/kubernetes"
       version = "~> 2.23"
     }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.11"
+    }
   }
 }
 
 provider "aws" {
   region = var.aws_region
+}
+
+# VPC Configuration
+resource "aws_vpc" "wordpress_vpc" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+
+  tags = {
+    Name = "wordpress-vpc"
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "wordpress_igw" {
+  vpc_id = aws_vpc.wordpress_vpc.id
+
+  tags = {
+    Name = "wordpress-igw"
+  }
+}
+
+# Subnets
+resource "aws_subnet" "private" {
+  count             = 2
+  vpc_id            = aws_vpc.wordpress_vpc.id
+  cidr_block        = "10.0.\${count.index + 1}.0/24"
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+
+  tags = {
+    Name = "wordpress-private-\${count.index + 1}"
+    "kubernetes.io/role/internal-elb" = "1"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count                   = 2
+  vpc_id                  = aws_vpc.wordpress_vpc.id
+  cidr_block              = "10.0.\${count.index + 10}.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "wordpress-public-\${count.index + 1}"
+    "kubernetes.io/role/elb" = "1"
+  }
 }
 
 # EKS Cluster
@@ -171,7 +221,9 @@ resource "aws_eks_cluster" "wordpress_cluster" {
   version  = "1.28"
 
   vpc_config {
-    subnet_ids = aws_subnet.private[*].id
+    subnet_ids              = concat(aws_subnet.private[*].id, aws_subnet.public[*].id)
+    endpoint_private_access = true
+    endpoint_public_access  = true
   }
 
   depends_on = [
@@ -179,7 +231,7 @@ resource "aws_eks_cluster" "wordpress_cluster" {
   ]
 }
 
-# Node Group
+# EKS Node Group
 resource "aws_eks_node_group" "wordpress_nodes" {
   cluster_name    = aws_eks_cluster.wordpress_cluster.name
   node_group_name = "wordpress-nodes"
@@ -190,6 +242,10 @@ resource "aws_eks_node_group" "wordpress_nodes" {
     desired_size = ${this.state.nodes}
     max_size     = 10
     min_size     = 1
+  }
+
+  update_config {
+    max_unavailable = 1
   }
 
   instance_types = ["t3.medium"]
@@ -235,8 +291,63 @@ resource "aws_docdb_cluster" "wordpress_mongodb" {
   backup_retention_period = 7
   preferred_backup_window = "07:00-09:00"
   skip_final_snapshot    = true
+  vpc_security_group_ids = [aws_security_group.docdb.id]
+  db_subnet_group_name   = aws_docdb_subnet_group.main.name
 }
 
+# Gateway API Installation
+resource "helm_release" "gateway_api" {
+  name             = "gateway-api"
+  repository       = "https://gateway-api.github.io/gateway-api"
+  chart            = "gateway-api"
+  namespace        = "gateway-system"
+  create_namespace = true
+}
+
+# Install Istio for Gateway API
+resource "helm_release" "istio_base" {
+  name             = "istio-base"
+  repository       = "https://istio-release.storage.googleapis.com/charts"
+  chart            = "base"
+  namespace        = "istio-system"
+  create_namespace = true
+}
+
+resource "helm_release" "istiod" {
+  name       = "istiod"
+  repository = "https://istio-release.storage.googleapis.com/charts"
+  chart      = "istiod"
+  namespace  = "istio-system"
+  
+  depends_on = [helm_release.istio_base]
+}
+
+# Jenkins Installation
+resource "helm_release" "jenkins" {
+  name             = "jenkins"
+  repository       = "https://charts.jenkins.io"
+  chart            = "jenkins"
+  namespace        = "jenkins"
+  create_namespace = true
+
+  values = [
+    yamlencode({
+      controller = {
+        adminPassword = var.jenkins_password
+        ingress = {
+          enabled = true
+          className = "istio"
+        }
+      }
+      persistence = {
+        enabled = true
+        size = "20Gi"
+      }
+    })
+  ]
+}
+
+# Variables
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -255,6 +366,18 @@ variable "mongodb_password" {
   sensitive   = true
 }
 
+variable "jenkins_password" {
+  description = "Jenkins admin password"
+  type        = string
+  sensitive   = true
+}
+
+# Data sources
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Outputs
 output "cluster_endpoint" {
   value = aws_eks_cluster.wordpress_cluster.endpoint
 }
@@ -265,16 +388,20 @@ output "mysql_endpoint" {
 
 output "mongodb_endpoint" {
   value = aws_docdb_cluster.wordpress_mongodb.endpoint
+}
+
+output "cluster_name" {
+  value = aws_eks_cluster.wordpress_cluster.name
 }`;
   }
 
   generateAnsiblePlaybook(): string {
     return `---
-# Ansible Playbook for WordPress Stack Configuration
+# Ansible Playbook for WordPress Stack with Jenkins CI/CD
 # Generated on: ${new Date().toISOString()}
 # Current Configuration: ${this.state.services.reduce((acc, s) => acc + s.replicas, 0)} total pods
 
-- name: Configure WordPress Infrastructure
+- name: Configure WordPress Infrastructure with Jenkins
   hosts: kubernetes_nodes
   become: yes
   vars:
@@ -282,6 +409,7 @@ output "mongodb_endpoint" {
     docker_version: "24.0"
     wordpress_replicas: ${this.state.services.find(s => s.name === 'wordpress')?.replicas || 2}
     mysql_replicas: ${this.state.services.find(s => s.name === 'mysql')?.replicas || 1}
+    jenkins_replicas: ${this.state.services.find(s => s.name === 'jenkins')?.replicas || 1}
     
   tasks:
     - name: Update system packages
@@ -310,15 +438,20 @@ output "mongodb_endpoint" {
         dest: /usr/local/bin/kubectl
         mode: '0755'
     
+    - name: Install Helm
+      shell: |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    
     - name: Install AWS CLI
       pip:
         name: awscli
         state: present
 
-- name: Deploy WordPress Stack
+- name: Deploy WordPress Stack with Jenkins
   hosts: localhost
   vars:
     namespace: wordpress
+    jenkins_namespace: jenkins
     
   tasks:
     - name: Create WordPress namespace
@@ -327,6 +460,57 @@ output "mongodb_endpoint" {
         api_version: v1
         kind: Namespace
         state: present
+    
+    - name: Create Jenkins namespace
+      kubernetes.core.k8s:
+        name: "{{ jenkins_namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: present
+    
+    - name: Install Gateway API CRDs
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Namespace
+          metadata:
+            name: gateway-system
+    
+    - name: Deploy Jenkins
+      kubernetes.core.k8s:
+        definition:
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: jenkins
+            namespace: "{{ jenkins_namespace }}"
+          spec:
+            replicas: "{{ jenkins_replicas }}"
+            selector:
+              matchLabels:
+                app: jenkins
+            template:
+              metadata:
+                labels:
+                  app: jenkins
+              spec:
+                containers:
+                - name: jenkins
+                  image: jenkins/jenkins:lts
+                  ports:
+                  - containerPort: 8080
+                  - containerPort: 50000
+                  env:
+                  - name: JENKINS_OPTS
+                    value: "--httpPort=8080"
+                  volumeMounts:
+                  - name: jenkins-home
+                    mountPath: /var/jenkins_home
+                volumes:
+                - name: jenkins-home
+                  persistentVolumeClaim:
+                    claimName: jenkins-pvc
     
     - name: Deploy MySQL
       kubernetes.core.k8s:
@@ -356,6 +540,13 @@ output "mongodb_endpoint" {
                     value: "wordpress"
                   ports:
                   - containerPort: 3306
+                  volumeMounts:
+                  - name: mysql-storage
+                    mountPath: /var/lib/mysql
+                volumes:
+                - name: mysql-storage
+                  persistentVolumeClaim:
+                    claimName: mysql-pvc
     
     - name: Deploy WordPress
       kubernetes.core.k8s:
@@ -388,12 +579,19 @@ output "mongodb_endpoint" {
                   - name: WORDPRESS_DB_PASSWORD
                     value: "wordpress"
                   ports:
-                  - containerPort: 80`;
+                  - containerPort: 80
+                  volumeMounts:
+                  - name: wordpress-storage
+                    mountPath: /var/www/html
+                volumes:
+                - name: wordpress-storage
+                  persistentVolumeClaim:
+                    claimName: wordpress-pvc`;
   }
 
   generateKubernetesManifests(): string {
     const services = this.state.services;
-    return `# Kubernetes Manifests for WordPress Stack
+    return `# Kubernetes Manifests for WordPress Stack with Jenkins CI/CD and Gateway API
 # Generated on: ${new Date().toISOString()}
 # Current Configuration: ${services.reduce((acc, s) => acc + s.replicas, 0)} total pods across ${services.length} services
 
@@ -401,6 +599,15 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: wordpress
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: jenkins
+  labels:
+    istio-injection: enabled
 ---
 apiVersion: v1
 kind: Secret
@@ -413,6 +620,25 @@ data:
   password: d29yZHByZXNz # base64 encoded 'wordpress'
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: jenkins-secret
+  namespace: jenkins
+type: Opaque
+data:
+  admin-password: amVua2lucw== # base64 encoded 'jenkins'
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: wordpress-tls
+  namespace: wordpress
+type: kubernetes.io/tls
+data:
+  tls.crt: LS0tLS1CRUdJTi... # Your TLS certificate
+  tls.key: LS0tLS1CRUdJTi... # Your TLS private key
+---
+apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: mysql-pvc
@@ -423,6 +649,67 @@ spec:
   resources:
     requests:
       storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: wordpress-pvc
+  namespace: wordpress
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jenkins-pvc
+  namespace: jenkins
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  replicas: ${services.find(s => s.name === 'jenkins')?.replicas || 1}
+  selector:
+    matchLabels:
+      app: jenkins
+  template:
+    metadata:
+      labels:
+        app: jenkins
+    spec:
+      containers:
+      - name: jenkins
+        image: jenkins/jenkins:lts
+        ports:
+        - containerPort: 8080
+        - containerPort: 50000
+        env:
+        - name: JENKINS_OPTS
+          value: "--httpPort=8080"
+        - name: JENKINS_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: jenkins-secret
+              key: admin-password
+        volumeMounts:
+        - name: jenkins-home
+          mountPath: /var/jenkins_home
+      volumes:
+      - name: jenkins-home
+        persistentVolumeClaim:
+          claimName: jenkins-pvc
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -529,6 +816,23 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: jenkins
+  namespace: jenkins
+spec:
+  selector:
+    app: jenkins
+  ports:
+  - name: web
+    port: 8080
+    targetPort: 8080
+  - name: agent
+    port: 50000
+    targetPort: 50000
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
   name: wordpress
   namespace: wordpress
 spec:
@@ -537,8 +841,7 @@ spec:
   ports:
   - port: 80
     targetPort: 80
-    nodePort: 30080
-  type: NodePort
+  type: ClusterIP
 ---
 apiVersion: v1
 kind: Service
@@ -564,31 +867,97 @@ spec:
   - port: 27017
     targetPort: 27017
 ---
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
 metadata:
-  name: wordpress-ingress
+  name: wordpress-gateway
   namespace: wordpress
-  annotations:
-    kubernetes.io/ingress.class: nginx
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
-  tls:
-  - hosts:
-    - your-wordpress.com
-    secretName: wordpress-tls
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    hostname: "wordpress.local"
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+  - name: https
+    hostname: "wordpress.local"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: wordpress-tls
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: wordpress-route
+  namespace: wordpress
+spec:
+  parentRefs:
+  - name: wordpress-gateway
+  hostnames:
+  - "wordpress.local"
   rules:
-  - host: your-wordpress.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: wordpress
-            port:
-              number: 80`;
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: wordpress
+      port: 80
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: Gateway
+metadata:
+  name: jenkins-gateway
+  namespace: jenkins
+spec:
+  gatewayClassName: istio
+  listeners:
+  - name: http
+    hostname: "jenkins.local"
+    port: 80
+    protocol: HTTP
+    allowedRoutes:
+      namespaces:
+        from: Same
+  - name: https
+    hostname: "jenkins.local"
+    port: 443
+    protocol: HTTPS
+    tls:
+      mode: Terminate
+      certificateRefs:
+      - name: jenkins-tls
+    allowedRoutes:
+      namespaces:
+        from: Same
+---
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: HTTPRoute
+metadata:
+  name: jenkins-route
+  namespace: jenkins
+spec:
+  parentRefs:
+  - name: jenkins-gateway
+  hostnames:
+  - "jenkins.local"
+  rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /
+    backendRefs:
+    - name: jenkins
+      port: 8080`;
   }
 }
 

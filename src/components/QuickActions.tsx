@@ -30,13 +30,96 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [scaleValues, setScaleValues] = useState<{[key: string]: number}>({});
   const [terminalOutput, setTerminalOutput] = useState<string[]>([
-    "$ kubectl get pods -n wordpress",
-    "NAME                          READY   STATUS    RESTARTS   AGE"
+    "Welcome to Interactive Kubectl Terminal",
+    "Type 'help' to see available commands",
+    "$ "
   ]);
   const [terminalInput, setTerminalInput] = useState('');
   const [theme, setTheme] = useState('dark');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [notifications, setNotifications] = useState(true);
+
+  const kubectlCommands = {
+    'kubectl get pods': () => {
+      const output = ["NAME                          READY   STATUS    RESTARTS   AGE"];
+      deploymentState.services.forEach((service: any) => {
+        Array.from({length: service.replicas}, (_, i) => {
+          output.push(`${service.name}-${Math.random().toString(36).substring(7)}     1/1     ${service.status === 'running' ? 'Running' : 'Pending'}   0          2h`);
+        });
+      });
+      return output;
+    },
+    'kubectl get svc': () => [
+      "NAME        TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)",
+      "wordpress   LoadBalancer   10.100.200.1    <pending>       80:30080/TCP",
+      "mysql       ClusterIP      10.100.200.2    <none>          3306/TCP",
+      "mongodb     ClusterIP      10.100.200.3    <none>          27017/TCP",
+      "jenkins     ClusterIP      10.100.200.4    <none>          8080/TCP"
+    ],
+    'kubectl get deployments': () => {
+      const output = ["NAME        READY   UP-TO-DATE   AVAILABLE   AGE"];
+      deploymentState.services.forEach((service: any) => {
+        output.push(`${service.name.padEnd(11)} ${service.replicas}/${service.replicas}     ${service.replicas}            ${service.replicas}           2h`);
+      });
+      return output;
+    },
+    'kubectl get gateway': () => [
+      "NAME               CLASS    ADDRESS        PROGRAMMED   AGE",
+      "wordpress-gateway  istio    10.96.1.100    True         2h"
+    ],
+    'kubectl get httproute': () => [
+      "NAME             HOSTNAMES               AGE",
+      "wordpress-route  [\"wordpress.local\"]     2h"
+    ],
+    'kubectl get nodes': () => [
+      "NAME                         STATUS   ROLES           AGE   VERSION",
+      "wordpress-cluster-node-1     Ready    control-plane   3h    v1.28.0",
+      "wordpress-cluster-node-2     Ready    <none>          3h    v1.28.0",
+      "wordpress-cluster-node-3     Ready    <none>          3h    v1.28.0"
+    ],
+    'kubectl get secrets': () => [
+      "NAME                    TYPE                                  DATA   AGE",
+      "mysql-secret           Opaque                                2      2h",
+      "mongodb-secret         Opaque                                2      2h",
+      "jenkins-secret         Opaque                                1      2h",
+      "wordpress-tls          kubernetes.io/tls                     2      2h"
+    ],
+    'kubectl get pvc': () => [
+      "NAME           STATUS   VOLUME                     CAPACITY   ACCESS MODES   AGE",
+      "mysql-pvc      Bound    pvc-mysql-123             10Gi       RWO            2h",
+      "mongodb-pvc    Bound    pvc-mongodb-456           10Gi       RWO            2h",
+      "jenkins-pvc    Bound    pvc-jenkins-789           20Gi       RWO            2h"
+    ],
+    'kubectl describe pod': () => [
+      "Name:         wordpress-deployment-abc123",
+      "Namespace:    wordpress",
+      "Priority:     0",
+      "Node:         wordpress-cluster-node-2/10.0.1.5",
+      "Start Time:   2 hours ago",
+      "Status:       Running",
+      "IP:           10.244.1.10",
+      "Containers:",
+      "  wordpress:",
+      "    Image:          wordpress:6.3-apache",
+      "    Port:           80/TCP",
+      "    State:          Running",
+      "    Ready:          True"
+    ],
+    'help': () => [
+      "Available kubectl commands:",
+      "  kubectl get pods",
+      "  kubectl get svc",
+      "  kubectl get deployments",
+      "  kubectl get gateway",
+      "  kubectl get httproute",
+      "  kubectl get nodes",
+      "  kubectl get secrets",
+      "  kubectl get pvc",
+      "  kubectl describe pod [name]",
+      "  kubectl logs [pod-name]",
+      "  clear - clear terminal"
+    ]
+  };
 
   const actions = [
     {
@@ -93,40 +176,28 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
   const executeTerminalCommand = (command: string) => {
     const newOutput = [...terminalOutput, `$ ${command}`];
     
-    if (command.includes('get pods')) {
-      deploymentState.services.forEach((service: any, index: number) => {
-        Array.from({length: service.replicas}, (_, i) => {
-          newOutput.push(`${service.name}-${Math.random().toString(36).substring(7)}     1/1     ${service.status === 'running' ? 'Running' : 'Pending'}   0          2h`);
-        });
-      });
-    } else if (command.includes('get svc')) {
-      newOutput.push("NAME        TYPE           CLUSTER-IP      EXTERNAL-IP     PORT(S)");
-      newOutput.push("wordpress   NodePort       10.100.200.1    <none>          80:30080/TCP");
-      newOutput.push("mysql       ClusterIP      10.100.200.2    <none>          3306/TCP");
-      newOutput.push("mongodb     ClusterIP      10.100.200.3    <none>          27017/TCP");
-    } else if (command.includes('get deployment')) {
-      newOutput.push("NAME        READY   UP-TO-DATE   AVAILABLE   AGE");
-      deploymentState.services.forEach((service: any) => {
-        newOutput.push(`${service.name}      ${service.replicas}/${service.replicas}     ${service.replicas}            ${service.replicas}           2h`);
-      });
-    } else if (command.includes('describe')) {
-      newOutput.push("Name:         wordpress-deployment");
-      newOutput.push("Namespace:    wordpress");
-      newOutput.push("Labels:       app=wordpress");
-      newOutput.push("Replicas:     2 desired | 2 updated | 2 total | 2 available");
-    } else if (command === 'help') {
-      newOutput.push("Available commands:");
-      newOutput.push("  kubectl get pods -n wordpress");
-      newOutput.push("  kubectl get svc -n wordpress");
-      newOutput.push("  kubectl get deployment -n wordpress");
-      newOutput.push("  kubectl describe deployment wordpress -n wordpress");
-      newOutput.push("  clear");
-    } else if (command === 'clear') {
-      setTerminalOutput([]);
+    if (command === 'clear') {
+      setTerminalOutput(["Welcome to Interactive Kubectl Terminal", "Type 'help' to see available commands", "$ "]);
       setTerminalInput('');
       return;
+    }
+
+    // Find matching command
+    const matchedCommand = Object.keys(kubectlCommands).find(cmd => 
+      command.toLowerCase().includes(cmd.toLowerCase()) || 
+      (cmd === 'help' && command.toLowerCase() === 'help')
+    );
+
+    if (matchedCommand) {
+      const result = kubectlCommands[matchedCommand as keyof typeof kubectlCommands]();
+      newOutput.push(...result);
+    } else if (command.includes('kubectl logs')) {
+      newOutput.push("=== Pod Logs ===");
+      newOutput.push("[2024-01-01 10:00:00] WordPress initialized successfully");
+      newOutput.push("[2024-01-01 10:00:01] Database connection established");
+      newOutput.push("[2024-01-01 10:00:02] Ready to serve requests");
     } else {
-      newOutput.push(`bash: ${command}: command not found`);
+      newOutput.push(`Error: command "${command}" not recognized`);
       newOutput.push("Type 'help' for available commands");
     }
     
@@ -134,16 +205,30 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
     setTerminalInput('');
   };
 
-  const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const downloadAllConfigs = () => {
+    // Download all three config types
+    const configs = [
+      { content: deploymentStore.generateKubernetesManifests(), filename: 'kubernetes-wordpress-stack.yaml' },
+      { content: deploymentStore.generateTerraformConfig(), filename: 'terraform-wordpress-stack.tf' },
+      { content: deploymentStore.generateAnsiblePlaybook(), filename: 'ansible-wordpress-playbook.yml' }
+    ];
+
+    configs.forEach(({ content, filename }) => {
+      const blob = new Blob([content], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    toast({
+      title: "All Configuration Files Downloaded",
+      description: "Kubernetes, Terraform, and Ansible configurations downloaded successfully",
+    });
   };
 
   const handleAction = async (action: string) => {
@@ -154,7 +239,7 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         deploymentStore.deployAll();
         toast({
           title: "Real Deployment Started",
-          description: "Deploying WordPress stack with updated configurations...",
+          description: "Deploying WordPress stack with Jenkins CI/CD pipeline...",
         });
         break;
         
@@ -177,8 +262,8 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         
       case 'pipeline':
         toast({
-          title: "CI/CD Pipeline Started",
-          description: "Building and deploying from Git repository...",
+          title: "Jenkins Pipeline Started",
+          description: "Building and deploying from Git repository via Jenkins...",
         });
         break;
         
@@ -206,14 +291,7 @@ export const QuickActions = ({ deploymentState }: QuickActionsProps) => {
         break;
 
       case 'download':
-        downloadFile(deploymentStore.generateTerraformConfig(), 'terraform-wordpress-stack.tf');
-        downloadFile(deploymentStore.generateAnsiblePlaybook(), 'ansible-wordpress-playbook.yml');
-        downloadFile(deploymentStore.generateKubernetesManifests(), 'kubernetes-manifests.yaml');
-        
-        toast({
-          title: "Configuration Files Downloaded",
-          description: "Terraform, Ansible, and Kubernetes manifests downloaded successfully",
-        });
+        downloadAllConfigs();
         break;
     }
   };

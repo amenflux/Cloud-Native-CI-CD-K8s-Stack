@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Sidebar } from '../components/Sidebar';
 import { ArchitectureDiagram } from '../components/ArchitectureDiagram';
@@ -47,18 +48,18 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 flex">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 dark:from-slate-900 dark:via-blue-900 dark:to-slate-800 light:from-slate-100 light:via-blue-100 light:to-slate-200 flex">
       <Sidebar 
         activeView={activeView} 
         setActiveView={setActiveView}
         systemStats={systemStats}
       />
       <main className="flex-1 p-8">
-        <header className="mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">
+        <header className="mb-16">
+          <h1 className="text-4xl font-bold text-white dark:text-white light:text-slate-900 mb-4">
             WordPress CloudNative Stack
           </h1>
-          <p className="text-blue-200 text-lg">
+          <p className="text-blue-200 dark:text-blue-200 light:text-blue-700 text-lg">
             Production-Ready WordPress with MySQL, MongoDB & Advanced DevOps Automation
           </p>
         </header>

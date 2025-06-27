@@ -11,7 +11,8 @@ import {
   Shield,
   Download,
   Play,
-  AlertTriangle
+  AlertTriangle,
+  Cloud
 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { deploymentStore } from '../store/deploymentStore';

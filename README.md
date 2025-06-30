@@ -5,6 +5,10 @@
 
 This project was originally created for one of the firms I worked for as a comprehensive solution to enable non-technical team members to configure, monitor, and adjust CI/CD pipelines and Kubernetes deployments without needing deep command-line knowledge. The goal was to democratize DevOps operations through an intuitive web interface.
 
+[![Dashboard Preview](https://i.postimg.cc/QtS7N9Vk/Screenshot-2025-06-30-at-11-39-46.png)](https://postimg.cc/phhrqdfp)
+[![Deployment Config Preview](https://i.postimg.cc/28X4BKrp/Screenshot-2025-06-30-at-11-40-24.png)](https://postimg.cc/crwKpTvT)
+[![Security Preview](https://i.postimg.cc/nhySqzpt/Screenshot-2025-06-30-at-11-40-38.png)](https://postimg.cc/k2yym72j)
+
 **Important Note**: This project does not have a real backend since it's purely for demonstration purposes. I didn't want to incur cloud service costs just for showcasing the solution. However, the frontend is fully configured to demonstrate what the complete solution would look like in a production environment. I've adjusted the original internal tool to remove any confidential information while maintaining all the educational and functional aspects.
 
 While this is a demonstration, the configurations and templates provided can be used by anyone to automate real-world WordPress deployments with MySQL, MongoDB, and advanced DevOps workflows.
